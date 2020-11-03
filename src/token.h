@@ -1,0 +1,55 @@
+//
+// Created by S.Morteza Ezzabady on 10/24/20.
+//
+
+#ifndef CALCULATOR_TOKEN_H
+#define CALCULATOR_TOKEN_H
+
+#include <iostream>
+#include <string>
+#include <map>
+
+class Token {
+public:
+    Token(std::string str);
+    virtual double eval() = 0;
+    virtual void print() = 0;
+
+    static const std::string numReg;
+    static const std::string asgReg;
+    static const std::string optReg;
+    static const std::string varReg;
+
+protected:
+    std::string rawValue;
+};
+
+class NumToken: public Token {
+public:
+    NumToken(std::string str);
+    double eval();
+    void print();
+};
+
+class OptToken: public Token {
+public:
+    OptToken(std::string str);
+    double eval();
+    void print();
+    std::string getRaw();
+};
+
+class VarToken: public Token {
+    std::map<std::string, double>* varsMap;
+public:
+    VarToken(std::string str, std::map<std::string, double>* vars);
+    double eval();
+    void print();
+    double set(double x);
+    double add(double x);
+    double sub(double x);
+    double mul(double x);
+    double div(double x);
+    double mod(double x);
+};
+#endif //CALCULATOR_TOKEN_H
