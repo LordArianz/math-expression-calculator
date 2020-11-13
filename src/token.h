@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <vector>
 
 class Token {
 public:
@@ -41,15 +42,16 @@ public:
 
 class VarToken: public Token {
     std::map<std::string, double>* varsMap;
-public:
-    VarToken(std::string str, std::map<std::string, double>* vars);
-    double eval();
-    void print();
-    double set(double x);
+    double asg(double x);
     double add(double x);
     double sub(double x);
     double mul(double x);
     double div(double x);
     double mod(double x);
+public:
+    VarToken(std::string str, std::map<std::string, double>* vars);
+    double eval();
+    void print();
+    double set(double x, OptToken* opt);
 };
 #endif //CALCULATOR_TOKEN_H

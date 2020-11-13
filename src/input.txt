@@ -3,3 +3,7 @@ b= 3 +  6*2
 a += b / 3 + 2;
 c=a*a+b
 b-= c*0.02
+x=2;
+sin(x-1)
+polynomial(x-1,cos(0),1+sin(x/2-1),x)
+polynomial(x-1,cos(0),1+sin(x/2-1),sqrt(polynomial(2,x)/2),x)

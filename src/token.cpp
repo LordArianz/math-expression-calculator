@@ -6,8 +6,8 @@
 
 const std::string Token::numReg = "([0-9]*[.])?[0-9]+";
 const std::string Token::asgReg = R"((=)|(\+=)|(\-=)|(\*=)|(\/=)|(\%=))";
-const std::string Token::optReg = R"((\+)|(\-)|(\*)|(\/)|(\%)|(\^)|(\()|(\)))";
-const std::string Token::varReg = "[a-z,A-Z][a-z,A-Z,0-9]*";
+const std::string Token::optReg = R"((\+)|(\-)|(\*)|(\/)|(\%)|(\^)|(\()|(\))|(\,))";
+const std::string Token::varReg = "([a-z]|[A-Z])([a-z]|[A-Z]|[0-9])*";
 
 Token::Token(std::string str) : rawValue{str} {}
 
@@ -55,7 +55,7 @@ void VarToken::print() {
     std::cout << "variable " << rawValue << " = " << eval() << '\n';
 }
 
-double VarToken::set(double x) {
+double VarToken::asg(double x) {
     return (*varsMap)[rawValue] = x;
 }
 
@@ -77,4 +77,20 @@ double VarToken::div(double x) {
 
 double VarToken::mod(double x) {
     return (*varsMap)[rawValue] = (int)(*varsMap)[rawValue] % (int)x;
+}
+
+double VarToken::set(double x, OptToken *opt) {
+    if(opt->getRaw().front() == '=')
+        return asg(x);
+    if(opt->getRaw().front() == '+')
+        return add(x);
+    if(opt->getRaw().front() == '-')
+        return sub(x);
+    if(opt->getRaw().front() == '*')
+        return mul(x);
+    if(opt->getRaw().front() == '/')
+        return div(x);
+    if(opt->getRaw().front() == '%')
+        return mod(x);
+    return eval();
 }

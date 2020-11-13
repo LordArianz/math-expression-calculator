@@ -14,19 +14,21 @@
 #include <stack>
 #include <cmath>
 #include "token.h"
+#include "fun_token.h"
 
 class Expression {
     std::string rawValue;
     double answer;
     std::vector<Token*> tokens;
 public:
-    Expression(std::string str, std::map<std::string, double>* vars = 0);
+    Expression(std::string str, std::map<std::string, double>* vars = 0, std::map<std::string, double(*)(double, ...)> *funcs = 0);
 
     double eval();
 
     void print();
 
-    std::vector<Token*> tokensFromString(std::string str, std::map<std::string, double> *vars);
+    std::vector<Token*> tokensFromString(std::string str, std::map<std::string, double> *vars,
+                                         std::map<std::string, double(*)(double, ...)> *funcs);
 
     std::queue<Token*> rpn();
 };
