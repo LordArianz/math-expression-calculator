@@ -13,6 +13,8 @@
 #include <queue>
 #include <stack>
 #include <cmath>
+#include <set>
+#include <deque>
 #include "token.h"
 #include "fun_token.h"
 
@@ -20,17 +22,24 @@ class Expression {
     std::string rawValue;
     double answer;
     std::vector<Token*> tokens;
+    std::map<std::string, std::pair<double(*)(double, ...), int> > *funcs;
+    std::map<std::string, std::pair<std::deque<Token *>*, int> > *specials;
 public:
-    Expression(std::string str, std::map<std::string, double>* vars = 0, std::map<std::string, double(*)(double, ...)> *funcs = 0);
+    Expression(std::string str,
+               std::map<std::string, double>* vars = 0,
+               std::map<std::string, std::pair<double(*)(double, ...), int> > *funcs = 0,
+               std::map<std::string, std::pair<std::deque<Token *>*, int> > *specials = 0);
 
     double eval();
 
     void print();
 
-    std::vector<Token*> tokensFromString(std::string str, std::map<std::string, double> *vars,
-                                         std::map<std::string, double(*)(double, ...)> *funcs);
+    std::vector<Token*> tokensFromString(std::string str,
+                                         std::map<std::string, double> *vars,
+                                         std::map<std::string, std::pair<double(*)(double, ...), int> > *funcs,
+                                         std::map<std::string, std::pair<std::deque<Token *>*, int> > *specials);
 
-    std::queue<Token*> rpn();
+    std::deque<Token*>* rpn();
 };
 
 

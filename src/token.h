@@ -15,11 +15,13 @@ public:
     Token(std::string str);
     virtual double eval() = 0;
     virtual void print() = 0;
+    std::string getRaw();
 
     static const std::string numReg;
     static const std::string asgReg;
     static const std::string optReg;
     static const std::string varReg;
+    static const std::string phdReg;
 
 protected:
     std::string rawValue;
@@ -37,7 +39,6 @@ public:
     OptToken(std::string str);
     double eval();
     void print();
-    std::string getRaw();
 };
 
 class VarToken: public Token {

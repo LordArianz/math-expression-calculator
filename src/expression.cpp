@@ -4,18 +4,37 @@
 
 #include "expression.h"
 
-Expression::Expression(std::string str, std::map<std::string, double> *vars,
-                       std::map<std::string, double(*)(double, ...)> *funcs) {
-    tokens = tokensFromString(str, vars, funcs);
+Expression::Expression(std::string str,
+                       std::map<std::string, double> *vars,
+                       std::map<std::string, std::pair<double(*)(double, ...), int> > *funcs,
+                       std::map<std::string, std::pair<std::deque<Token *>*, int> > *specials):
+                       funcs{funcs}, specials{specials} {
+    rawValue = str;
+    tokens = tokensFromString(str, vars, funcs, specials);
 }
 
 double Expression::eval() {
-    std::queue<Token *> rpnQueue = rpn();
+    std::deque<Token *>* rpnQueue = rpn();
+    int ulCnt = 0;
+    for(int i=0;i<rpnQueue->size();i++) {
+        if(rpnQueue->at(i)->getRaw()[0] == '_'){
+            if(!(dynamic_cast<VarToken *>(rpnQueue->front()) && rpnQueue->back()->getRaw() == "="))
+                throw std::domain_error("Invalid Equation");
+            ulCnt++;
+        }
+    }
+    if(ulCnt){
+        std::string newFunc = rpnQueue->front()->getRaw();
+        rpnQueue->pop_front();
+        rpnQueue->pop_back();
+        (*specials)[newFunc] = std::make_pair(rpnQueue, ulCnt);
+        return 0;
+    }
     std::stack<double> evalStack;
     VarToken *v;
-    while (!rpnQueue.empty()) {
-        Token *token = rpnQueue.front();
-        rpnQueue.pop();
+    while (!rpnQueue->empty()) {
+        Token *token = rpnQueue->front();
+        rpnQueue->pop_front();
         NumToken *num = dynamic_cast<NumToken *>(token);
         OptToken *opt = dynamic_cast<OptToken *>(token);
         VarToken *var = dynamic_cast<VarToken *>(token);
@@ -75,8 +94,10 @@ void Expression::print() {
     std::cout << "answer -> " << answer << '\n';
 }
 
-std::vector<Token *> Expression::tokensFromString(std::string str, std::map<std::string, double> *vars,
-                                                  std::map<std::string, double(*)(double, ...)> *funcs) {
+std::vector<Token *> Expression::tokensFromString(std::string str,
+                                                  std::map<std::string, double> *vars,
+                                                  std::map<std::string, std::pair<double(*)(double, ...), int> > *funcs,
+                                                  std::map<std::string, std::pair<std::deque<Token *>*, int> > *specials) {
     std::string asg = "(" + Token::varReg + ")\\s*(" + Token::asgReg + ")";
     std::string fun = "(" + Token::varReg + ")\\s*(\\()";
     std::string equ = "(" + fun + ")|(" + Token::varReg + ")|(" + Token::optReg + ")|(" + Token::numReg + ")";
@@ -110,10 +131,10 @@ std::vector<Token *> Expression::tokensFromString(std::string str, std::map<std:
             std::string q = *innerIter;
             if (std::regex_match(q.begin(), q.end(), std::regex(fun))) {
                 q.pop_back();
-                if(!funcs->count(q)) {
+                if(!funcs->count(q) && !specials->count(q)) {
                     throw std::domain_error("Invalid Function " + q);
                 }
-                tokens.push_back(new FunToken(q, funcs));
+                tokens.push_back(new FunToken(q, funcs, specials));
                 tokens.push_back(new OptToken("("));
             } else if (std::regex_match(q.begin(), q.end(), std::regex(Token::optReg)) ||
                        std::regex_match(q.begin(), q.end(), std::regex(Token::asgReg))) {
@@ -136,11 +157,29 @@ std::vector<Token *> Expression::tokensFromString(std::string str, std::map<std:
     return tokens;
 }
 
-std::queue<Token *> Expression::rpn() {
-    std::queue<Token *> rpnQueue;
+int next(std::set<int> s){ // need to be better
+    int x = 1;
+    for(int y: s){
+        if(y > x)
+            return x;
+        x++;
+    }
+    return x;
+}
+
+std::deque<Token *>* Expression::rpn() {
+    int ulCnt = 0;
+    int phCnt = 0;
+    for (int i = 0; i < rawValue.size(); i++)
+        if (rawValue[i] == '_')
+            ulCnt++;
+    std::deque<Token *> *rpnQueue = new std::deque<Token *>();
     std::stack<Token *> optStack;
     std::stack<bool> wereValue;
     std::stack<int> argCount;
+    std::set<int> phdSet;
+    std::vector<int> phdVec;
+
     bool lastWasOp = true;
     for (int i = 0; i < tokens.size(); i++) {
         NumToken *num = dynamic_cast<NumToken *>(tokens[i]);
@@ -149,7 +188,7 @@ std::queue<Token *> Expression::rpn() {
         FunToken *fun = dynamic_cast<FunToken *>(tokens[i]);
 
         if (num) {
-            rpnQueue.push(tokens[i]);
+            rpnQueue->push_back(tokens[i]);
             lastWasOp = false;
             if (!wereValue.empty()) {
                 wereValue.pop();
@@ -161,7 +200,7 @@ std::queue<Token *> Expression::rpn() {
             else if (opt->getRaw() == ")") {
                 while (!optStack.empty() &&
                        (dynamic_cast<FunToken *>(optStack.top()) || ((OptToken *) optStack.top())->getRaw() != "(")) {
-                    rpnQueue.push(optStack.top());
+                    rpnQueue->push_back(optStack.top());
                     optStack.pop();
                 }
                 if (optStack.empty())
@@ -174,10 +213,22 @@ std::queue<Token *> Expression::rpn() {
                     argCount.pop();
                     bool w = wereValue.top();
                     wereValue.pop();
-                    if (w)
+                    if (w) {
                         cnt++;
+                        std::string raw = rpnQueue->back()->getRaw();
+                        if (std::regex_match(raw.begin(), raw.end(), std::regex(Token::phdReg))) {
+                            phCnt++;
+                            int p = std::atoi(raw.substr(1, raw.size() - 1).c_str());
+                            phdSet.insert(p);
+                            phdVec.push_back(p);
+                            rpnQueue->pop_back();
+                            rpnQueue->push_back(new PhdToken(raw));
+                        }
+                    }
                     top->setArgCount(cnt);
-                    rpnQueue.push(top);
+                    top->placeholders = std::vector<int>(phdVec);
+                    phdVec.clear();
+                    rpnQueue->push_back(top);
                 }
             } else if (opt->getRaw() == ",") {
                 bool miss = true;
@@ -186,7 +237,7 @@ std::queue<Token *> Expression::rpn() {
                         break;
                     Token *top = optStack.top();
                     if (dynamic_cast<FunToken *>(top)) {
-                        rpnQueue.push(top);
+                        rpnQueue->push_back(top);
                         optStack.pop();
                         continue;
                     }
@@ -194,7 +245,7 @@ std::queue<Token *> Expression::rpn() {
                         miss = false;
                         break;
                     }
-                    rpnQueue.push(top);
+                    rpnQueue->push_back(top);
                     optStack.pop();
                 }
                 if (miss) {
@@ -207,23 +258,32 @@ std::queue<Token *> Expression::rpn() {
                     argCount.pop();
                     argCount.push(cnt + 1);
                     wereValue.push(false);
+                    std::string raw = rpnQueue->back()->getRaw();
+                    if (std::regex_match(raw.begin(), raw.end(), std::regex(Token::phdReg))) {
+                        phCnt++;
+                        int p = std::atoi(raw.substr(1, raw.size() - 1).c_str());
+                        phdSet.insert(p);
+                        phdVec.push_back(p);
+                        rpnQueue->pop_back();
+                        rpnQueue->push_back(new PhdToken(raw));
+                    }
                 }
             } else {
                 if (lastWasOp) {
                     if (opt->getRaw() == "-" || opt->getRaw() == "+") {
-                        rpnQueue.push(new NumToken("0"));
+                        rpnQueue->push_back(new NumToken("0"));
                     } else {
                         throw std::domain_error("Invalid Operator");
                     }
                 }
                 while (!optStack.empty() && opt->eval() <= optStack.top()->eval()) {
-                    rpnQueue.push(optStack.top());
+                    rpnQueue->push_back(optStack.top());
                     optStack.pop();
                 }
                 optStack.push(opt);
             }
         } else if (var) {
-            rpnQueue.push(tokens[i]);
+            rpnQueue->push_back(tokens[i]);
             lastWasOp = false;
         } else if (fun) {
             optStack.push(fun);
@@ -235,9 +295,26 @@ std::queue<Token *> Expression::rpn() {
             wereValue.push(false);
         }
     }
+    if (phCnt != ulCnt) {
+        throw std::domain_error("Invalid Equation");
+    }
     while (!optStack.empty()) {
-        rpnQueue.push(optStack.top());
+        rpnQueue->push_back(optStack.top());
         optStack.pop();
     }
+    for(int i=0;i<rpnQueue->size();i++){
+        FunToken *fun = dynamic_cast<FunToken *>(rpnQueue->at(i));
+        if(fun){
+            if(fun->getNeededArgCount() > fun->getArgCount()){
+                int n = next(phdSet);
+                phdSet.insert(n);
+                rpnQueue->insert(rpnQueue->begin() + i, new PhdToken('_' + std::to_string(n)));
+                fun->setArgCount(fun->getArgCount() + 1);
+            }
+        }
+    }
+//    for(int i=0;i<rpnQueue->size();i++) {
+//        rpnQueue->at(i)->print();
+//    }
     return rpnQueue;
 }

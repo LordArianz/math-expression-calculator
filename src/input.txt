@@ -7,3 +7,5 @@ x=2;
 sin(x-1)
 polynomial(x-1,cos(0),1+sin(x/2-1),x)
 polynomial(x-1,cos(0),1+sin(x/2-1),sqrt(polynomial(2,x)/2),x)
+spec=pow(sin(_3),_1)+4*5-lerp(_5,2)+lerp(_4);
+spec(2,2,30,1,2,3,4)

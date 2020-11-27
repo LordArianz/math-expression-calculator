@@ -4,10 +4,11 @@
 
 #include "token.h"
 
-const std::string Token::numReg = "([0-9]*[.])?[0-9]+";
+const std::string Token::numReg = "(([0-9]*[.])?[0-9]+)|(_[0-9]+)";
 const std::string Token::asgReg = R"((=)|(\+=)|(\-=)|(\*=)|(\/=)|(\%=))";
 const std::string Token::optReg = R"((\+)|(\-)|(\*)|(\/)|(\%)|(\^)|(\()|(\))|(\,))";
 const std::string Token::varReg = "([a-z]|[A-Z])([a-z]|[A-Z]|[0-9])*";
+const std::string Token::phdReg = "(_[0-9]+)";
 
 Token::Token(std::string str) : rawValue{str} {}
 
@@ -39,7 +40,7 @@ void OptToken::print() {
     std::cout << "operator " << rawValue << '\n';
 }
 
-std::string OptToken::getRaw() {
+std::string Token::getRaw() {
     return rawValue;
 }
 
